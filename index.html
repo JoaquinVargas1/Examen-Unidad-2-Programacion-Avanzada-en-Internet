@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html>
 <head>
   <title>Examen Segunda Unidad - Bomberman</title>
@@ -21,12 +21,48 @@
     }
 
     #startScreen {
-      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: white;
+      font-size: 24px;
+      text-align: center;
+    }
+
+    #startScreen div {
+      margin-bottom: 20px; 
+    }
+
+    #startButton {
+      padding: 10px 20px;
+      font-size: 18px;
+      cursor: pointer;
+      background-color: orange; 
+      color: white; 
+      border: none; 
+      border-radius: 5px; 
+      transition: background-color 0.3s;
+    }
+
+    #startButton:hover {
+      background-color: darkorange; 
     }
   </style>
 </head>
 <body>
-  <canvas width="768" height="722" id="gameCanvas"></canvas>
+
+  <div id="startScreen">
+    <div>Bienvenido a Bomber-Jack</div>
+    <button id="startButton">Jugar</button>
+  </div>
+  <canvas width="768" height="722" id="gameCanvas" style="display:none;"></canvas>
 
   <script>
     const canvas = document.getElementById('gameCanvas');
@@ -74,6 +110,19 @@
       context.fillText('Extra', 610, 30);
       context.fillStyle = 'gray';
       context.fillRect(665, 2, 100, 45); 
+    }
+
+    function drawGameOverScreen() {
+      const elapsed = Date.now() - startTime; 
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Dibuja un mensaje de victoria
+      context.fillStyle = 'white';
+      context.font = '48px Arial';
+      context.textAlign = 'center';
+      context.fillText('¡Juego Terminado!', canvas.width / 2, canvas.height / 2 - 20);
+      context.font = '36px Arial';
+      context.fillText(`Tiempo final: ${formatTime(elapsed)}`, canvas.width / 2, canvas.height / 2 + 30);
     }
 
     // Crear canvas para soft wall y wall
@@ -146,6 +195,18 @@
           }
         }
       }
+    }
+
+    // Verifica si quedan soft walls
+    function checkGameOver() {
+      for (let row = 0; row < numRows; row++) {
+        for (let col = 0; col < numCols; col++) {
+          if (cells[row][col] === types.softWall) {
+            return false; 
+          }
+        }
+      }
+      return true; 
     }
 
     // Hace explotar una bomba
@@ -288,6 +349,11 @@
     let dt;
 
     function loop(timestamp) {
+      if (gameOver) {
+        drawGameOverScreen();
+        return;
+      }
+
       requestAnimationFrame(loop);
       context.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -327,9 +393,15 @@
       entities = entities.filter((entity) => entity.alive);
 
       player.render();
+
+      if (checkGameOver()) {
+        gameOver = true;
+      }
     }
 
     document.addEventListener('keydown', function (e) {
+        if (gameOver) return;
+
         let row = player.row;
         let col = player.col;
 
@@ -353,8 +425,15 @@
         }
     });
 
+    function startGame() {
+      document.getElementById('startScreen').style.display = 'none';
+      canvas.style.display = 'block';
+    }
+
+    document.getElementById('startButton').addEventListener('click', startGame);
     generateLevel();
     requestAnimationFrame(loop);
   </script>
+
 </body>
 </html>
