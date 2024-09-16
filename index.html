@@ -1,0 +1,297 @@
+<!DOCTYPE html> 
+<html>
+<head>
+  <title>Examen Segunda Unidad - Bomberman</title>
+  <meta charset="UTF-8">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      background: black;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    canvas {
+      background: rgb(74, 0, 114);
+    }
+
+    #startScreen {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas width="768" height="722" id="gameCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const context = canvas.getContext('2d');
+
+    // Definición del grid 
+    const grid = 51;  
+    const numRows = 13;
+    const numCols = 15;
+
+    // Mostrar el tiempo transcurrido
+    let startTime = Date.now();
+    let gameOver = false;
+
+    function formatTime(ms) {
+      const totalSeconds = Math.floor(ms / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      return `${hours}h ${minutes}m ${seconds}s`;
+    }
+
+    function drawInfo() {
+      const elapsed = Date.now() - startTime; 
+      context.clearRect(0, 0, canvas.width, 50);
+
+      // Mostrar el tiempo transcurrido
+      context.fillStyle = 'white';
+      context.font = '20px Arial';
+      context.fillText(`Tiempo: ${formatTime(elapsed)}`, 10, 30);
+
+      // Mostrar las instrucciones
+      context.fillStyle = 'white';
+      context.font = '20px Arial';
+      context.fillText('Movimiento', 220, 30);
+      context.fillStyle = 'gray';
+      context.fillRect(330, 5, 100, 40); 
+
+      context.fillStyle = 'white';
+      context.fillText('Soltar', 440, 30);
+      context.fillStyle = 'gray';
+      context.fillRect(500, 5, 100, 30); 
+
+      context.fillStyle = 'white';
+      context.fillText('Extra', 610, 30);
+      context.fillStyle = 'gray';
+      context.fillRect(665, 2, 100, 45); 
+    }
+
+    // Mapeo de tipos de objetos
+    const types = {
+      wall: '▉',
+      softWall: 1,
+      bomb: 2
+    };
+
+    // Seguimiento de entidades
+    let entities = [];
+
+    // Seguimiento de celdas del juego
+    let cells = [];
+
+    // Genera el nivel sin muros
+    function generateLevel() {
+      cells = [];
+      for (let row = 0; row < numRows; row++) {
+        cells[row] = [];
+        for (let col = 0; col < numCols; col++) {
+          cells[row][col] = null; 
+        }
+      }
+    }
+
+    // Hace explotar una bomba
+    function blowUpBomb(bomb) {
+      if (!bomb.alive) return;
+      bomb.alive = false;
+      cells[bomb.row][bomb.col] = null;
+
+      const dirs = [{ row: -1, col: 0 }, { row: 1, col: 0 }, { row: 0, col: -1 }, { row: 0, col: 1 }];
+      dirs.forEach((dir) => {
+        for (let i = 0; i < bomb.size; i++) {
+          const row = bomb.row + dir.row * i;
+          const col = bomb.col + dir.col * i;
+          const cell = cells[row][col];
+
+          if (row < 0 || row >= numRows || col < 0 || col >= numCols) break; 
+          if (cell === types.wall) break; 
+
+          entities.push(new Explosion(row, col, dir, i === 0 ? true : false));
+          cells[row][col] = null;
+
+          if (cell === types.bomb) {
+            const nextBomb = entities.find((entity) => {
+              return (
+                entity.type === types.bomb &&
+                entity.row === row && entity.col === col
+              );
+            });
+            blowUpBomb(nextBomb);
+          }
+
+          if (cell) break; 
+        }
+      });
+    }
+
+    // Constructor de la bomba
+    function Bomb(row, col, size, owner) {
+      this.row = row;
+      this.col = col;
+      this.size = size;
+      this.owner = owner;
+      this.alive = true;
+      this.type = types.bomb;
+      this.timer = 3000;
+
+      this.update = function(dt) {
+        this.timer -= dt;
+        if (this.timer <= 0) return blowUpBomb(this);
+      };
+
+      this.render = function() {
+        const x = this.col * grid;
+        const y = this.row * grid + 50; 
+        context.fillStyle = 'orange';
+        context.beginPath();
+        context.arc(x + grid / 2, y + grid / 2, grid / 2, 0, Math.PI * 2);
+        context.fill();
+        context.strokeStyle = 'darkorange';
+        context.stroke();
+      };
+    }
+
+    // Constructor de la explosión
+    function Explosion(row, col, dir, center) {
+      this.row = row;
+      this.col = col;
+      this.dir = dir;
+      this.alive = true;
+      this.timer = 300;
+
+      this.update = function(dt) {
+        this.timer -= dt;
+        if (this.timer <= 0) this.alive = false;
+      };
+
+      this.render = function() {
+        const x = this.col * grid;
+        const y = this.row * grid + 50; 
+        const horizontal = this.dir.col;
+        const vertical = this.dir.row;
+
+        context.fillStyle = '#D72B16';
+        context.fillRect(x, y, grid, grid);
+
+        context.fillStyle = '#F39642';
+
+        if (center || horizontal) {
+          context.fillRect(x, y + 4, grid, grid - 8);
+        }
+        if (center || vertical) {
+          context.fillRect(x + 4, y, grid - 8, grid);
+        }
+
+        context.fillStyle = '#FFE5A8';
+
+        if (center || horizontal) {
+          context.fillRect(x, y + 8, grid, grid - 16);
+        }
+        if (center || vertical) {
+          context.fillRect(x + 8, y, grid - 16, grid);
+        }
+      };
+    }
+
+    // Objeto del jugador
+    const player = {
+      row: 1,
+      col: 1,
+      numBombs: 1,
+      bombSize: 3,
+      radius: grid * 0.35,
+      render() {
+        const x = (this.col + 0.5) * grid;
+        const y = (this.row + 0.5) * grid + 50; 
+
+        context.fillStyle = 'gold';
+        context.beginPath();
+        context.arc(x, y, this.radius, 0, Math.PI * 2);
+        context.fill();
+        context.strokeStyle = 'darkgoldenrod';
+        context.stroke();
+      }
+    };
+
+    // Comprueba si el jugador está en el rango de la explosión
+    function isPlayerInExplosion(explosion) {
+      const xMin = explosion.col * grid;
+      const xMax = xMin + grid;
+      const yMin = explosion.row * grid;
+      const yMax = yMin + grid;
+      const px = player.col * grid + grid / 2;
+      const py = player.row * grid + grid / 2;
+
+      return px >= xMin && px <= xMax && py >= yMin && py <= yMax;
+    }
+
+    // Bucle del juego
+    let last;
+    let dt;
+
+    function loop(timestamp) {
+      requestAnimationFrame(loop);
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
+      drawInfo();
+
+      if (!last) {
+        last = timestamp;
+      }
+      dt = timestamp - last;
+      last = timestamp;
+
+      entities.forEach((entity) => {
+        entity.update(dt);
+        entity.render();
+
+        if (entity instanceof Explosion && isPlayerInExplosion(entity)) {
+          player.row = 1;
+          player.col = 1;
+        }
+      });
+
+      entities = entities.filter((entity) => entity.alive);
+
+      player.render();
+    }
+
+    document.addEventListener('keydown', function (e) {
+        let row = player.row;
+        let col = player.col;
+
+        if (e.which === 37) { col--; } // Izquierda
+        else if (e.which === 38) { row--; } // Arriba
+        else if (e.which === 39) { col++; } // Derecha
+        else if (e.which === 40) { row++; } // Abajo
+        else if (e.which === 32 && !cells[row][col] && entities.filter((entity) => entity.type === types.bomb && entity.owner === player).length < player.numBombs) {
+          const bomb = new Bomb(row, col, player.bombSize, player);
+          entities.push(bomb);
+          cells[row][col] = types.bomb;
+        }
+        else if (e.which === 13) {
+          player.numBombs++;
+          console.log('Número de bombas aumentadas: ' + player.numBombs);
+        }
+
+        if (!cells[row][col]) {
+          player.row = row;
+          player.col = col;
+        }
+    });
+
+    generateLevel();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
