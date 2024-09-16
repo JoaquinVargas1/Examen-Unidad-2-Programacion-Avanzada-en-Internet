@@ -76,6 +76,35 @@
       context.fillRect(665, 2, 100, 45); 
     }
 
+    // Crear canvas para soft wall y wall
+    const softWallCanvas = document.createElement('canvas');
+    const softWallCtx = softWallCanvas.getContext('2d');
+    softWallCanvas.width = grid;
+    softWallCanvas.height = grid;
+
+    const wallCanvas = document.createElement('canvas');
+    const wallCtx = wallCanvas.getContext('2d');
+    wallCanvas.width = grid;
+    wallCanvas.height = grid;
+
+    // Dibujar soft wall
+    function drawSoftWallImage() {
+      softWallCtx.clearRect(0, 0, grid, grid);
+      softWallCtx.fillStyle = 'lightgray';
+      softWallCtx.fillRect(0, 0, grid, grid);
+      softWallCtx.strokeStyle = 'gray';
+      softWallCtx.strokeRect(0, 0, grid, grid);
+    }
+
+    // Dibujar muro
+    function drawWallImage() {
+      wallCtx.clearRect(0, 0, grid, grid);
+      wallCtx.fillStyle = 'darkgray';
+      wallCtx.fillRect(0, 0, grid, grid);
+      wallCtx.strokeStyle = 'black';
+      wallCtx.strokeRect(0, 0, grid, grid);
+    }
+
     // Mapeo de tipos de objetos
     const types = {
       wall: '▉',
@@ -88,14 +117,33 @@
 
     // Seguimiento de celdas del juego
     let cells = [];
+    const template = [
+      ['▉','▉','▉','▉','▉','▉','▉','▉','▉','▉','▉','▉','▉','▉','▉'],
+      ['▉','x','x',   ,   ,   ,   ,   ,   ,   ,   ,   ,'x','x','▉'],
+      ['▉','x','▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉','x','▉'],
+      ['▉','x',   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,'x','▉'],
+      ['▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉'],
+      ['▉',   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,'▉'],
+      ['▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉'],
+      ['▉',   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,'▉'],
+      ['▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉'],
+      ['▉','x',   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,'x','▉'],
+      ['▉','x','▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉',   ,'▉','x','▉'],
+      ['▉','x','x',   ,   ,   ,   ,   ,   ,   ,   ,   ,'x','x','▉'],
+      ['▉','▉','▉','▉','▉','▉','▉','▉','▉','▉','▉','▉','▉','▉','▉']
+    ];
 
-    // Genera el nivel sin muros
+    // Genera el nivel
     function generateLevel() {
       cells = [];
       for (let row = 0; row < numRows; row++) {
         cells[row] = [];
         for (let col = 0; col < numCols; col++) {
-          cells[row][col] = null; 
+          if (!template[row][col] && Math.random() < 0.90) {
+            cells[row][col] = types.softWall;
+          } else if (template[row][col] === types.wall) {
+            cells[row][col] = types.wall;
+          }
         }
       }
     }
@@ -250,6 +298,21 @@
       }
       dt = timestamp - last;
       last = timestamp;
+
+      for (let row = 0; row < numRows; row++) {
+        for (let col = 0; col < numCols; col++) {
+          switch (cells[row][col]) {
+            case types.wall:
+              drawWallImage();
+              context.drawImage(wallCanvas, col * grid, (row * grid) + 50); 
+              break;
+            case types.softWall:
+              drawSoftWallImage();
+              context.drawImage(softWallCanvas, col * grid, (row * grid) + 50); 
+              break;
+          }
+        }
+      }
 
       entities.forEach((entity) => {
         entity.update(dt);
