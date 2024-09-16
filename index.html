@@ -73,6 +73,18 @@
     const numRows = 13;
     const numCols = 15;
 
+    // Cargar imágenes de instrucciones
+    const moveImg = new Image();
+    const placeImg = new Image();
+    const EnterImg = new Image();  
+    moveImg.src = 'Movimiento.png'; 
+    placeImg.src = 'Colocar.png'; 
+    EnterImg.src = 'Enter.png'; 
+
+    // Cargar imagen de victoria
+    const winImg = new Image();
+    winImg.src = 'Win.png'; 
+
     // Mostrar el tiempo transcurrido
     let startTime = Date.now();
     let gameOver = false;
@@ -98,25 +110,22 @@
       context.fillStyle = 'white';
       context.font = '20px Arial';
       context.fillText('Movimiento', 220, 30);
-      context.fillStyle = 'gray';
-      context.fillRect(330, 5, 100, 40); 
+      context.drawImage(moveImg, 330, 5, 100, 40); 
 
-      context.fillStyle = 'white';
       context.fillText('Soltar', 440, 30);
-      context.fillStyle = 'gray';
-      context.fillRect(500, 5, 100, 30); 
+      context.drawImage(placeImg, 500, 5, 100, 30); 
 
-      context.fillStyle = 'white';
       context.fillText('Extra', 610, 30);
-      context.fillStyle = 'gray';
-      context.fillRect(665, 2, 100, 45); 
+      context.drawImage(EnterImg, 665, 2, 100, 45); 
     }
 
     function drawGameOverScreen() {
       const elapsed = Date.now() - startTime; 
       context.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Dibuja un mensaje de victoria
+      // Dibuja la imagen de victoria
+      context.drawImage(winImg, (canvas.width - winImg.width) / 2, (canvas.height - winImg.height) / 2);
+
       context.fillStyle = 'white';
       context.font = '48px Arial';
       context.textAlign = 'center';
@@ -136,22 +145,46 @@
     wallCanvas.width = grid;
     wallCanvas.height = grid;
 
-    // Dibujar soft wall
-    function drawSoftWallImage() {
-      softWallCtx.clearRect(0, 0, grid, grid);
-      softWallCtx.fillStyle = 'lightgray';
-      softWallCtx.fillRect(0, 0, grid, grid);
-      softWallCtx.strokeStyle = 'gray';
-      softWallCtx.strokeRect(0, 0, grid, grid);
+    // Cargar imágenes
+    const trigoImg = new Image();
+    const tombImg = new Image();
+    const pumpkinImg = new Image();
+    const scarecrowImg = new Image();
+    trigoImg.src = 'Trigo.png';
+    tombImg.src = 'Tumba.png';
+    pumpkinImg.src = 'Calabaza.png';
+    scarecrowImg.src = 'Espantapajaro.png'; 
+
+    let imagesLoaded = 0;
+
+    function onImageLoad() {
+      imagesLoaded++;
+      if (imagesLoaded === 6) { 
+        drawWallImage();
+        drawSoftWallImage();
+        generateLevel();
+        requestAnimationFrame(loop);
+      }
     }
 
-    // Dibujar muro
+    trigoImg.onload = onImageLoad;
+    tombImg.onload = onImageLoad;
+    pumpkinImg.onload = onImageLoad;
+    scarecrowImg.onload = onImageLoad;
+    moveImg.onload = onImageLoad;
+    placeImg.onload = onImageLoad;
+    winImg.onload = onImageLoad;
+
+    // Función para dibujar la imagen del soft wall en el canvas
+    function drawSoftWallImage() {
+      softWallCtx.clearRect(0, 0, grid, grid);
+      softWallCtx.drawImage(trigoImg, -6, -6, grid + 12, grid + 12);
+    }
+
+    // Función para dibujar la imagen del muro en el canvas
     function drawWallImage() {
       wallCtx.clearRect(0, 0, grid, grid);
-      wallCtx.fillStyle = 'darkgray';
-      wallCtx.fillRect(0, 0, grid, grid);
-      wallCtx.strokeStyle = 'black';
-      wallCtx.strokeRect(0, 0, grid, grid);
+      wallCtx.drawImage(tombImg, -4.2, 0, grid + 7.5, grid);
     }
 
     // Mapeo de tipos de objetos
@@ -261,12 +294,7 @@
       this.render = function() {
         const x = this.col * grid;
         const y = this.row * grid + 50; 
-        context.fillStyle = 'orange';
-        context.beginPath();
-        context.arc(x + grid / 2, y + grid / 2, grid / 2, 0, Math.PI * 2);
-        context.fill();
-        context.strokeStyle = 'darkorange';
-        context.stroke();
+        context.drawImage(pumpkinImg, x, y, grid, grid);
       };
     }
 
@@ -323,12 +351,9 @@
         const x = (this.col + 0.5) * grid;
         const y = (this.row + 0.5) * grid + 50; 
 
-        context.fillStyle = 'gold';
-        context.beginPath();
-        context.arc(x, y, this.radius, 0, Math.PI * 2);
-        context.fill();
-        context.strokeStyle = 'darkgoldenrod';
-        context.stroke();
+        context.save();
+        context.drawImage(scarecrowImg, x - this.radius - 25.2, y - this.radius - 7.8, grid + 36, grid + 6);
+        context.restore();
       }
     };
 
@@ -369,11 +394,9 @@
         for (let col = 0; col < numCols; col++) {
           switch (cells[row][col]) {
             case types.wall:
-              drawWallImage();
               context.drawImage(wallCanvas, col * grid, (row * grid) + 50); 
               break;
             case types.softWall:
-              drawSoftWallImage();
               context.drawImage(softWallCanvas, col * grid, (row * grid) + 50); 
               break;
           }
@@ -431,8 +454,6 @@
     }
 
     document.getElementById('startButton').addEventListener('click', startGame);
-    generateLevel();
-    requestAnimationFrame(loop);
   </script>
 
 </body>
