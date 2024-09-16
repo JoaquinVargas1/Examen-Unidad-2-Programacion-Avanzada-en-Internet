@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html>
 <head>
   <title>Examen Segunda Unidad - Bomberman</title>
@@ -63,10 +63,14 @@
     <button id="startButton">Jugar</button>
   </div>
   <canvas width="768" height="722" id="gameCanvas" style="display:none;"></canvas>
+  <audio id="audio" loop>
+    <source src="Fondo.mp3" type="audio/mp3">
+  </audio>
 
   <script>
     const canvas = document.getElementById('gameCanvas');
     const context = canvas.getContext('2d');
+    const audio = document.getElementById('audio');
 
     // Definición del grid 
     const grid = 51;  
@@ -84,6 +88,13 @@
     // Cargar imagen de victoria
     const winImg = new Image();
     winImg.src = 'Win.png'; 
+
+    // Cargar sonidos
+    const dropSound = new Audio('Soltar.mp3');
+    const explosionSound = new Audio('Explosion.mp3');
+    const deathSound = new Audio('Muerte.mp3');
+    const WalkSound = new Audio('Pasos.mp3');
+    const BonusSound = new Audio('BombaExtra.mp3');
 
     // Mostrar el tiempo transcurrido
     let startTime = Date.now();
@@ -104,7 +115,7 @@
       // Mostrar el tiempo transcurrido
       context.fillStyle = 'white';
       context.font = '20px Arial';
-      context.fillText(`Tiempo: ${formatTime(elapsed)}`, 10, 30);
+      context.fillText('Tiempo: ' + formatTime(elapsed), 10, 30);
 
       // Mostrar las instrucciones
       context.fillStyle = 'white';
@@ -117,6 +128,7 @@
 
       context.fillText('Extra', 610, 30);
       context.drawImage(EnterImg, 665, 2, 100, 45); 
+
     }
 
     function drawGameOverScreen() {
@@ -131,7 +143,7 @@
       context.textAlign = 'center';
       context.fillText('¡Juego Terminado!', canvas.width / 2, canvas.height / 2 - 20);
       context.font = '36px Arial';
-      context.fillText(`Tiempo final: ${formatTime(elapsed)}`, canvas.width / 2, canvas.height / 2 + 30);
+      context.fillText('Tiempo final: ' + formatTime(elapsed), canvas.width / 2, canvas.height / 2 + 30);
     }
 
     // Crear canvas para soft wall y wall
@@ -223,7 +235,8 @@
         for (let col = 0; col < numCols; col++) {
           if (!template[row][col] && Math.random() < 0.90) {
             cells[row][col] = types.softWall;
-          } else if (template[row][col] === types.wall) {
+          }
+          else if (template[row][col] === types.wall) {
             cells[row][col] = types.wall;
           }
         }
@@ -248,7 +261,11 @@
       bomb.alive = false;
       cells[bomb.row][bomb.col] = null;
 
-      const dirs = [{ row: -1, col: 0 }, { row: 1, col: 0 }, { row: 0, col: -1 }, { row: 0, col: 1 }];
+      // Reproducir sonido de explosión
+      explosionSound.play();
+      explosionSound.volume = 0.2;
+
+      const dirs = [ { row: -1, col: 0 }, { row: 1, col: 0 }, { row: 0, col: -1 }, { row: 0, col: 1 } ];
       dirs.forEach((dir) => {
         for (let i = 0; i < bomb.size; i++) {
           const row = bomb.row + dir.row * i;
@@ -271,7 +288,7 @@
             blowUpBomb(nextBomb);
           }
 
-          if (cell) break; 
+          if (cell) break; // Detener la explosión si encuentra algún otro tipo de celda
         }
       });
     }
@@ -390,6 +407,7 @@
       dt = timestamp - last;
       last = timestamp;
 
+      // Dibuja la imagen del muro
       for (let row = 0; row < numRows; row++) {
         for (let col = 0; col < numCols; col++) {
           switch (cells[row][col]) {
@@ -403,58 +421,74 @@
         }
       }
 
+      // Actualiza y renderiza todas las entidades
       entities.forEach((entity) => {
         entity.update(dt);
         entity.render();
-
+        
+        // Comprobar si el jugador está en el rango de la explosión
         if (entity instanceof Explosion && isPlayerInExplosion(entity)) {
+          // Reproducir sonido de muerte
+          deathSound.play();
+          // Reiniciar la posición del jugador
           player.row = 1;
           player.col = 1;
         }
       });
 
+      // Elimina entidades muertas
       entities = entities.filter((entity) => entity.alive);
 
+      // Renderiza el jugador
       player.render();
 
+      // Verifica si el juego ha terminado
       if (checkGameOver()) {
         gameOver = true;
       }
     }
 
+    // Escucha eventos de teclado para mover al jugador y agregar bombas
     document.addEventListener('keydown', function (e) {
-        if (gameOver) return;
+        if (gameOver) return; 
 
         let row = player.row;
         let col = player.col;
 
-        if (e.which === 37) { col--; } // Izquierda
-        else if (e.which === 38) { row--; } // Arriba
-        else if (e.which === 39) { col++; } // Derecha
-        else if (e.which === 40) { row++; } // Abajo
+        if (e.which === 37) { WalkSound.play(); col--; } // Izquierda
+        else if (e.which === 38) { WalkSound.play(); row--; } // Arriba
+        else if (e.which === 39) { WalkSound.play(); col++; } // Derecha
+        else if (e.which === 40) { WalkSound.play(); row++; } // Abajo
         else if (e.which === 32 && !cells[row][col] && entities.filter((entity) => entity.type === types.bomb && entity.owner === player).length < player.numBombs) {
-          const bomb = new Bomb(row, col, player.bombSize, player);
-          entities.push(bomb);
-          cells[row][col] = types.bomb;
+        // Colocar bomba con la tecla espacio
+        const bomb = new Bomb(row, col, player.bombSize, player);
+        entities.push(bomb);
+        cells[row][col] = types.bomb;
+        dropSound.play();
         }
         else if (e.which === 13) {
-          player.numBombs++;
-          console.log('Número de bombas aumentadas: ' + player.numBombs);
+        // Tecla 'M' para agregar más bombas
+        BonusSound.play();
+        player.numBombs++;
+        console.log('Número de bombas aumentadas: ' + player.numBombs);
         }
 
         if (!cells[row][col]) {
-          player.row = row;
-          player.col = col;
-        }
+        player.row = row;
+        player.col = col;
+    }
     });
 
+    // Función para iniciar el juego
     function startGame() {
       document.getElementById('startScreen').style.display = 'none';
       canvas.style.display = 'block';
+      audio.play(); 
+      audio.volume = 0.1;
     }
 
+    // Evento para iniciar el juego
     document.getElementById('startButton').addEventListener('click', startGame);
   </script>
-
 </body>
 </html>
